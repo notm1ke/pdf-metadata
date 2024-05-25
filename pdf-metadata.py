@@ -6,6 +6,7 @@ import requests
 import pandas as pd
 
 from time import sleep, time
+from util import write_to_csv
 
 parser = argparse.ArgumentParser(
     prog="pdf-metadata",
@@ -14,6 +15,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-i', '--input', help='path to the source csv file', required=True)
 parser.add_argument('-c', '--clean', help='clean the csv file before processing', action='store_true')
+parser.add_argument('-m', '--mode', help='mode to run the script in', choices=['json', 'csv'], default='json')
 
 args = parser.parse_args()
 source_csv = args.input
@@ -64,6 +66,9 @@ for i, row in pd.iterrows():
     print(f'[{i + 1}] Downloaded {url} to {filename}')
 
 i = 0
+mode = args.mode
+rows = []
+
 for pdf in os.listdir('pdfs'):
     i += 1
 
@@ -74,30 +79,37 @@ for pdf in os.listdir('pdfs'):
 
     # skip already processed files
     filename = f'pdfs/{pdf}'
-    if os.path.exists(f'pdfs/meta/{pdf}.json'):
+    if os.path.exists(f'pdfs/meta/{pdf}.json') and mode == 'json':
         print(f'[{i}] Metadata for {filename} already exists, skipping..')
         continue
 
     # extract metadata and save it to a json file
-    with open(f'pdfs/meta/{pdf}.json', 'w') as out:
-        try:
-            with exiftool.ExifToolHelper() as exif:
-                meta = exif.get_metadata(filename)[0]
-                payload = {
-                    'url': files.get(pdf, '<unknown url>'),
-                    'title': meta.get('PDF:Title', '<no title>'),
-                    'author': meta.get('PDF:Author', '<no author>'),
-                    'creator': meta.get('PDF:Creator', '<no creator>'),
-                    'producer': meta.get('PDF:Producer', '<no producer>'),
-                    'version': meta.get('PDF:PDFVersion', '<no version>'),
-                    'size': meta.get('File:FileSize', -1),
-                    'xmp': meta.get('XMP:XMPToolkit', '<no xmp toolkit version>'),
-                    'pages': meta.get('PDF:PageCount', -1)
-                }
+    try:
+        with exiftool.ExifToolHelper() as exif:
+            meta = exif.get_metadata(filename)[0]
+            payload = {
+                'url': files.get(pdf, '<unknown url>'),
+                'title': meta.get('PDF:Title', '<unknown title>'),
+                'author': meta.get('PDF:Author', '<unknown author>'),
+                'creator': meta.get('PDF:Creator', '<unknown creator>'),
+                'producer': meta.get('PDF:Producer', '<unknown producer>'),
+                'version': meta.get('PDF:PDFVersion', '<unknown version>'),
+                'size': meta.get('File:FileSize', -1),
+                'xmp': meta.get('XMP:XMPToolkit', '<unknown xmp toolkit version>'),
+                'pages': meta.get('PDF:PageCount', -1)
+            }
 
-                out.write(json.dumps(payload, indent=3))
-                print(f'[{i}] Saved metadata for {filename}')
-        except Exception as e:
-            print(f'[{i}] Error processing {filename}: {e}')
+            if mode == 'json':
+                with open(f'pdfs/meta/{pdf}.json', 'w') as out:
+                    out.write(json.dumps(payload, indent=3))
+            else: rows.append(payload)
+
+            print(f'[{i}] {"Saved" if mode == "json" else "Collected"} metadata for {filename}')
+    except Exception as e:
+        print(f'[{i}] Error processing {filename}: {e}')
+
+if mode == 'csv' and len(rows) > 0:
+    write_to_csv(rows, 'metadata.csv')
+    print(f'Wrote metadata for {len(rows)} PDFs to metadata.csv')
 
 print(f'Processed {i} PDFs in {time() - start:.2f} seconds.')

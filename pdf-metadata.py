@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('-i', '--input', help='path to the source csv file', required=True)
 parser.add_argument('-c', '--clean', help='clean the csv file before processing', action='store_true')
-parser.add_argument('-m', '--mode', help='mode to run the script in', choices=['json', 'csv'], default='json')
+parser.add_argument('-m', '--mode', help='mode to run the script in', choices=['json', 'csv'], default='csv')
 
 args = parser.parse_args()
 source_csv = args.input

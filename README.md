@@ -9,7 +9,7 @@ In order to get started, ensure you have Python >=3.6 installed on your machine.
 #### Usage
 
 ```
-usage: pdf-metadata [-h] -i INPUT [-c]
+usage: pdf-metadata [-h] -i INPUT [-c] [-m {csv,json}]
 
 Download PDFs from a source CSV file and extracts their metadata.
 
@@ -17,12 +17,40 @@ options:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
                         path to the source csv file
-  -c, --clean           clean the csv file before processing
+  
+  -c, --clean           [optional] clean the csv file before processing
+                                   default: false
+
+  -m {csv,json}, --mode {csv,json}
+                        [optional] mode to run the script in
+                                   default: csv
 ```
 
-You must supply the input file using either the `-i` or `--input` flag. The `-c` or `--clean` flag is optional and will drop records that do not have a `Url` field in the source CSV file. It will save an additional file, named `clean.csv` and use that as the source CSV.
+##### Example
+
+```bash
+$ python3 pdf-metadata -i example/clean.csv
+#                         ^ path to source csv file
+
+$ python3 pdf-metadata -i example/clean.csv -c -m json
+#                         ^ path to source csv file
+#                                           ^ clean the csv file
+#                                                 ^ output metadata in JSON format
+```
+
+You must supply the input file using either the `-i` or `--input` flag. The `-c` or `--clean` flag is optional and will drop records that do not have a `Url` field in the source CSV file. It will save an additional file, named `clean.csv` and use that as the source CSV. Additionally, you can supply the `-m` or `--mode` flag to specify the output format of the metadata files. The default is `csv` which will output a `metadata.csv` file in the root directory, but you can also use `json` which will generate a directory, `./pdfs/meta` that has a JSON file for each PDF file.
 
 #### Output
+
+##### CSV Format
+
+Once ran, a `metadata.csv` file is created in the root directory of the project. This file will contain the following structure:
+
+| Url                     | Title                    | Author                   | Creator                  | Producer                 | Version | Size  | Xmp                      | Pages |
+|-------------------------|-------------------------|-------------------------|-------------------------|-------------------------|---------|-------|-------------------------|-------|
+| https://draft-president.media.uconn.edu/wp-content/uploads/sites/3778/2024/01/1.-Protect-Our-Pack-Task-Force-Presentation.pdf | Protect Our Pack  Orientation  & other Training Programs | Longa, Jenn | Acrobat PDFMaker 20 for PowerPoint | Adobe PDF Library 20.5.106 | 1.6 | 204702 | Adobe XMP Core 5.6-c017 91.164464, 2020/06/15-10:20:05 | 10 |
+
+##### JSON Format
 
 Once ran, a `pdfs` folder is created in the root directory of the project. This has both all of the downloaded PDFs and the metadata, under a `meta` folder. Each metadata file corresponds with the name of it's respective PDF file, and will contain the following JSON payload:
 

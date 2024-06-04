@@ -6,7 +6,7 @@ import requests
 import pandas as pd
 
 from time import sleep, time
-from util import write_to_csv
+from util import validate_url, with_backoff, write_to_csv
 
 parser = argparse.ArgumentParser(
     prog="pdf-metadata",
@@ -14,11 +14,12 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument('-i', '--input', help='path to the source csv file', required=True)
-parser.add_argument('-c', '--clean', help='clean the csv file before processing', action='store_true')
 parser.add_argument('-m', '--mode', help='mode to run the script in', choices=['json', 'csv'], default='csv')
 
 args = parser.parse_args()
 source_csv = args.input
+source_name = source_csv.split('/')[-1].split('.csv')[0]
+
 if not os.path.exists(source_csv):
     print(f'ERROR: File `{source_csv}` does not exist.')
     exit(1)
@@ -26,12 +27,6 @@ if not os.path.exists(source_csv):
 if not source_csv.endswith('.csv'):
     print(f'ERROR: File `{source_csv}` is not a CSV file.')
     exit(1)
-
-if args.clean:
-    pd = pd.read_csv(source_csv)
-    pd = pd.dropna(subset=['Url'])
-    pd.to_csv('clean.csv', index=False)
-    source_csv = 'clean.csv'
 
 start = time()
 pd = pd.read_csv(source_csv)
@@ -43,9 +38,30 @@ if not os.path.exists('pdfs/meta'):
     os.makedirs('pdfs/meta')
 
 files = {}
-for i, row in pd.iterrows():
-    url = row['Url']
-    filename = f'pdfs/{url.split("/")[-1]}'
+clean_pd = pd.dropna(subset=['Url'])
+
+for i, row in clean_pd.iterrows():
+    mime = row.get('Mime type', None)
+    if mime != 'application/pdf':
+        print(f'[{i + 1}] Target is not a PDF file (expected: application/pdf, found: {mime})')
+        continue
+
+    url = row.get('Url', None)
+    if url is None:
+        print(f'[{i + 1}] Skipping empty URL..')
+        continue
+    else:
+        valid_url = validate_url(str(url))
+        if not valid_url:
+            print(f'[{i + 1}] Skipping invalid URL: {url}')
+            continue
+
+    deleted_at = str(row.get('Deleted at', float('nan')))
+    if deleted_at is not None and deleted_at != 'nan':
+        print(f'[{i + 1}] Skipping {url} as it has been deleted.. ({deleted_at})')
+        continue
+
+    filename = f'pdfs/{source_name}-{url.split("/")[-1]}'
     if not url.endswith('.pdf'):
         print(f'[{i + 1}] Skipping {url} as it is not a PDF file..')
         continue
@@ -60,10 +76,12 @@ for i, row in pd.iterrows():
 
     # download the file and sleep for 0.25 seconds
     with open(filename, 'wb') as f:
-        f.write(requests.get(url, timeout=2).content)
-        sleep(0.25)
+        response = with_backoff(lambda: requests.get(url, timeout=5))
+        content = response.content
+        f.write(content)
+        sleep(0.5)
 
-    print(f'[{i + 1}] Downloaded {url} to {filename}')
+    print(f'[{i + 1}] Downloaded to {filename}')
 
 i = 0
 mode = args.mode
@@ -74,7 +92,6 @@ for pdf in os.listdir('pdfs'):
 
     # skip non-pdf files
     if not pdf.endswith('.pdf'):
-        print(f'[{i}] Skipping {pdf} as it is not a PDF file')
         continue
 
     # skip already processed files
@@ -100,7 +117,7 @@ for pdf in os.listdir('pdfs'):
             }
 
             if mode == 'json':
-                with open(f'pdfs/meta/{pdf}.json', 'w') as out:
+                with open(f'pdfs/meta/{source_name}-{pdf}.json', 'w') as out:
                     out.write(json.dumps(payload, indent=3))
             else: rows.append(payload)
 
@@ -109,7 +126,7 @@ for pdf in os.listdir('pdfs'):
         print(f'[{i}] Error processing {filename}: {e}')
 
 if mode == 'csv' and len(rows) > 0:
-    write_to_csv(rows, 'metadata.csv')
-    print(f'Wrote metadata for {len(rows)} PDFs to metadata.csv')
+    write_to_csv(rows, f'{source_name}-metadata.csv')
+    print(f'Wrote metadata for {len(rows)} PDFs to {source_name}-metadata.csv')
 
 print(f'Processed {i} PDFs in {time() - start:.2f} seconds.')

@@ -4,12 +4,20 @@ A simple script that takes in a CSV file containing Accessibility information (s
 
 #### Quick Start
 
-In order to get started, ensure you have Python >=3.6 installed on your machine. Then clone this repository and install the `requirements.txt` file in case you do not have `pandas>=2.1.0` and/or `pyexiftool>=0.5.6` installed.
+In order to get started, ensure you have Python >=3.6 installed on your machine. Then clone this repository and install the `requirements.txt` file in case you do not have `pandas>=2.1.0`, `pyexiftool>=0.5.6`, or `requests>=2.31.0` installed.
+
+If you have problems installing the requirements file, you can install the packages manually using the following commands:
+
+```bash
+$ pip3 install pandas
+$ pip3 install pyexiftool
+$ pip3 install requests
+```
 
 #### Usage
 
 ```
-usage: pdf-metadata [-h] -i INPUT [-c] [-m {csv,json}]
+usage: pdf-metadata [-h] -i INPUT [-m {json,csv}]
 
 Download PDFs from a source CSV file and extracts their metadata.
 
@@ -17,13 +25,8 @@ options:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
                         path to the source csv file
-  
-  -c, --clean           [optional] clean the csv file before processing
-                                   default: false
-
-  -m {csv,json}, --mode {csv,json}
-                        [optional] mode to run the script in
-                                   default: csv
+  -m {json,csv}, --mode {json,csv}
+                        mode to run the script in
 ```
 
 ##### Example
@@ -32,13 +35,12 @@ options:
 $ python3 pdf-metadata -i example/clean.csv
 #                         ^ path to source csv file
 
-$ python3 pdf-metadata -i example/clean.csv -c -m json
+$ python3 pdf-metadata -i example/clean.csv -m json
 #                         ^ path to source csv file
-#                                           ^ clean the csv file
-#                                                 ^ output metadata in JSON format
+#                                           ^ output metadata in JSON format
 ```
 
-You must supply the input file using either the `-i` or `--input` flag. The `-c` or `--clean` flag is optional and will drop records that do not have a `Url` field in the source CSV file. It will save an additional file, named `clean.csv` and use that as the source CSV. Additionally, you can supply the `-m` or `--mode` flag to specify the output format of the metadata files. The default is `csv` which will output a `metadata.csv` file in the root directory, but you can also use `json` which will generate a directory, `./pdfs/meta` that has a JSON file for each PDF file.
+You must supply the input file using either the `-i` or `--input` flag. Additionally, you can supply the `-m` or `--mode` flag to specify the output format of the metadata files. The default is `csv` which will output a `metadata.csv` file in the root directory, but you can also use `json` which will generate a directory, `./pdfs/meta` that has a JSON file for each PDF file.
 
 #### Output
 
@@ -83,7 +85,7 @@ pdfs/
 
 #### CSV format
 
-The accessibility report CSV file typically has the following columns, however we only really care about the **Url** field in this script. Thus, you can basically assemble a CSV file of a bunch of URL rows and it will work just as well.
+The accessibility report CSV file typically has the following columns, however we only really care about the **Url**, **Mime type**, and **Deleted at** fields in this script. Thus, you can basically assemble a CSV file of a bunch of URL rows, Mime types, and blank deleted at fields and it will work just as well. This is simply the format the UConn reports tend to come in.
 
 | Field                   |
 |-------------------------|
@@ -140,4 +142,4 @@ Here is a sample line of the above format.
 QzDB69ivWdlf3d9ifBKgUr3DgOjVxid9+beJg+bMmlA=,1.-Protect-Our-Pack-Task-Force-Presentation.pdf,application/pdf,0.5361625,,,https://draft-president.media.uconn.edu/wp-content/uploads/sites/3778/2024/01/1.-Protect-Our-Pack-Task-Force-Presentation.pdf,4/1/2022 20:16,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 ```
 
-An example of a CSV file can be found in the `example` directory.
+An example of a valid [CSV file](./examples/source.csv) can be found under the `example` directory.

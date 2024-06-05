@@ -41,21 +41,25 @@ files = {}
 clean_pd = pd.dropna(subset=['Url'])
 
 for i, row in clean_pd.iterrows():
+    # skip if not a pdf by mime type
     mime = row.get('Mime type', None)
     if mime != 'application/pdf':
-        print(f'[{i + 1}] Target is not a PDF file (expected: application/pdf, found: {mime})')
+        print(f'[{i + 1}] Target is not a PDF file (expected: application/pdf, found: {mime if mime is not None else "<unknown>"})')
         continue
 
+    # get url, or skip if empty
     url = row.get('Url', None)
     if url is None:
         print(f'[{i + 1}] Skipping empty URL..')
         continue
-    else:
-        valid_url = validate_url(str(url))
-        if not valid_url:
-            print(f'[{i + 1}] Skipping invalid URL: {url}')
-            continue
 
+    # check if url is valid
+    valid_url = validate_url(str(url))
+    if not valid_url:
+        print(f'[{i + 1}] Skipping invalid URL: {url}')
+        continue
+
+    # check if file was deleted
     deleted_at = str(row.get('Deleted at', float('nan')))
     if deleted_at is not None and deleted_at != 'nan':
         print(f'[{i + 1}] Skipping {url} as it has been deleted.. ({deleted_at})')

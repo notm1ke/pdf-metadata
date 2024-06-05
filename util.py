@@ -1,6 +1,6 @@
 import pandas as pd
 
-from time   import sleep
+from time import sleep
 from urllib.parse import urlparse
 
 def write_to_csv(rows, out_file):
